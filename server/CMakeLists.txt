@@ -1,0 +1,8 @@
+PROJECT(connectdots)
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
+SET(CMAKE_CXX_STANDARD 11)
+
+SET(SOURCE Match.cc)
+
+ADD_EXECUTABLE(server-single ${SOURCE} server-single.cc)
+ADD_EXECUTABLE(play ${SOURCE} play.cc)
