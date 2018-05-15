@@ -3,13 +3,6 @@
 
 namespace ConnectDots {
 
-static inline bool operator==(LineById ln1, LineById ln2) {
-    if (ln1.id[0] > ln1.id[1]) std::swap(ln1.id[0], ln1.id[1]);
-    if (ln2.id[0] > ln2.id[1]) std::swap(ln2.id[0], ln2.id[1]);
-
-    return ln1.id[0] == ln2.id[0] && ln1.id[1] == ln2.id[1];
-}
-
 void Match::Init(const std::vector<Point> &points, bool speedy_mode) {
     fPoints = points;
     assert(fPoints.size() >= 2);
@@ -29,6 +22,29 @@ int Match::CurrentPlayer() {
     return fCurrentPlayer;
 }
 
+void Match::GetTriangles(LineById ln, std::vector<TriangleById> &triangles, std::vector<Int> &scores) {
+    for (int p = 0; p < fPoints.size(); ++p) {
+        if (p == ln.p1 || p == ln.p2) continue;
+        if (fLinesSet.count(LineById(p, ln.p1)) && fLinesSet.count(LineById(p, ln.p2))) {
+            bool succ = true;
+
+            if (!fSpeedy) {
+                for (int q = 0; q < fPoints.size(); ++q) {
+                    if (Inside(fPoints[p], fPoints[ln.p1], fPoints[ln.p2], fPoints[q])) {
+                        succ = false;
+                        break;
+                    }
+                }
+            }
+
+            if (succ) {
+                triangles.emplace_back(p, ln.p1, ln.p2);
+                scores.push_back(abs(Triangle{fPoints[p], fPoints[ln.p1], fPoints[ln.p2]}.Area()));
+            }
+        }
+    }
+}
+
 DrawLineResult Match::DrawLine(int p1, int p2) {
     DrawLineResult result;
     if (p1 < 0 || p1 >= fPoints.size() || p2 < 0 || p2 >= fPoints.size()) {
@@ -41,8 +57,9 @@ DrawLineResult Match::DrawLine(int p1, int p2) {
     }
 
     Line ln{fPoints[p1], fPoints[p2]};
+    LineById lni{p1, p2};
     for (int id = 0; id < fLines.size(); ++id) {
-        Line cur{fPoints[fLines[id].id[0]], fPoints[fLines[id].id[1]]};
+        Line cur{fPoints[fLines[id].p1], fPoints[fLines[id].p2]};
         if (HasIntersection(ln, cur)) {
             result.line_id_out = id;
             result.status = INTERSECTION;
@@ -52,13 +69,18 @@ DrawLineResult Match::DrawLine(int p1, int p2) {
 
     result.status = SUCC;
     result.line_id_out = fLines.size();
-    fLines.push_back(LineById{p1, p2});
+    fLines.emplace_back(lni);
+    fLinesSet.emplace(lni);
+    GetTriangles(lni, result.triangles, result.scores);
 
-    // triangles for scores
-
-
+    for (TriangleById tri : result.triangles) {
+        fTriangles.push_back(tri);
+        fOwner.push_back(fCurrentPlayer);
+    }
+    fCurrentPlayer = 1 - fCurrentPlayer;
     return result;
 }
+
 ValidLinesResult Match::ValidLines() {
     ValidLinesResult result;
     for (int p1 = 0; p1 < fPoints.size(); ++p1) {
@@ -67,7 +89,7 @@ ValidLinesResult Match::ValidLines() {
             Line ln{fPoints[p1], fPoints[p2]};
 
             for (LineById curi : fLines) {
-                Line cur{fPoints[curi.id[0]], fPoints[curi.id[1]]};
+                Line cur{fPoints[curi.p1], fPoints[curi.p2]};
                 if (curi == lni)
                     continue;
                 if (HasIntersection(cur, ln))
@@ -75,8 +97,16 @@ ValidLinesResult Match::ValidLines() {
             }
 
             result.lines.push_back(lni);
+
+            std::vector<TriangleById> triangles;
+            std::vector<Int> score;
+            GetTriangles(lni, triangles, score);
+
+            result.triangles.push_back(triangles);
+            result.scores.push_back(score);
         }
     }
+
     return result;
 }
 

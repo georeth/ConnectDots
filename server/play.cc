@@ -1,10 +1,16 @@
 #include "Geometry.h"
 #include "Match.h"
+#include "GeneratePoints.h"
+#include <cstdio>
+
 using namespace std;
 using namespace ConnectDots;
 
 int main() {
-    Point p1{10, 100}, p2{50, 10}, p3{0, 0};
-    Line l1{p1, p2};
-    Triangle tri{p1, p2, p3};
+    RNG rng;
+
+    vector<Point> pts = GeneratePoints(20, 20, 10, rng, 3, 0.5);
+    for (Point p : pts) {
+        printf("%d %d\n", (int)p.x, (int)p.y);
+    }
 }
